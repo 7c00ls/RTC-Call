@@ -7,8 +7,9 @@ const bodyParser = require('body-parser');
 const serviceAccount = require('./arsh-webrtc-firebase-adminsdk-fbsvc-0a88c1c4f0.json');
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+  credential: admin.credential.applicationDefault()
 });
+
 
 const app = express();
 app.use(cors());
