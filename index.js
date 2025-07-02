@@ -1,51 +1,79 @@
-const express = require('express');
-const admin = require('firebase-admin');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-
-// Replace this with the actual filename of your service account JSON
-const serviceAccount = require('./arsh-webrtc-firebase-adminsdk-fbsvc-0a88c1c4f0.json');
-
-admin.initializeApp({
-  credential: admin.credential.applicationDefault()
-});
-
+const express = require("express");
+const { google } = require("google-auth-library");
+const dotenv = require("dotenv");
+const fs = require("fs");
+dotenv.config();
 
 const app = express();
-app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
 
-// POST route to send notification
-app.post('/send', async (req, res) => {
-  const { token, title, body } = req.body;
+// Load service account key
+const serviceAccount = require("./service-account.json");
 
-  if (!token) return res.status(400).send({ success: false, error: 'FCM token is required' });
+const SCOPES = ["https://www.googleapis.com/auth/firebase.messaging"];
+const PROJECT_ID = serviceAccount.project_id;
+
+async function getAccessToken() {
+  const client = new google.auth.JWT({
+    email: serviceAccount.client_email,
+    key: serviceAccount.private_key,
+    scopes: SCOPES,
+  });
+
+  const token = await client.authorize();
+  return token.access_token;
+}
+
+app.post("/send-notification", async (req, res) => {
+  const { token, roomId, fromName } = req.body;
+
+  if (!token || !roomId || !fromName) {
+    return res.status(400).send("Missing fields: token, roomId, fromName");
+  }
 
   const message = {
-    notification: {
-      title: title || 'Notification Title',
-      body: body || 'Notification Body'
-    },
-    token: token
+    message: {
+      token,
+      notification: {
+        title: `Incoming Call from ${fromName}`,
+        body: `Room ID: ${roomId}`
+      },
+      data: {
+        roomId
+      },
+      webpush: {
+        notification: {
+          actions: [
+            { action: "accept", title: "Accept Call" },
+            { action: "reject", title: "Reject Call" }
+          ]
+        }
+      }
+    }
   };
 
   try {
-    const response = await admin.messaging().send(message);
-    console.log("✅ Notification sent:", response);
-    res.send({ success: true, response });
-  } catch (error) {
-    console.error("❌ Failed to send:", error);
-    res.status(500).send({ success: false, error: error.message });
+    const accessToken = await getAccessToken();
+    const response = await fetch(
+      \`https://fcm.googleapis.com/v1/projects/\${PROJECT_ID}/messages:send\`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": \`Bearer \${accessToken}\`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(message)
+      }
+    );
+
+    const result = await response.json();
+    res.status(200).json({ success: true, result });
+  } catch (err) {
+    console.error("Push error:", err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Health check route
-app.get('/', (req, res) => {
-  res.send('🔔 FCM Notification Server is running!');
-});
-
-// Start the server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server started on http://localhost:${PORT}`);
+app.listen(3000, () => {
+  console.log("✅ HTTP v1 FCM push server running on port 3000");
 });
