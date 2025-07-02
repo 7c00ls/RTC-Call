@@ -1,17 +1,13 @@
 {
-  "name": "fcm-notification-server",
+  "name": "fcm-http-v1-backend",
   "version": "1.0.0",
-  "description": "Backend for sending Firebase Cloud Messaging notifications",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
-  "author": "Your Name",
-  "license": "MIT",
   "dependencies": {
-    "body-parser": "^1.20.2",
-    "cors": "^2.8.5",
     "express": "^4.18.2",
-    "firebase-admin": "^11.10.1"
+    "google-auth-library": "^8.9.0",
+    "dotenv": "^16.0.3"
   }
 }
