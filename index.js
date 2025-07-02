@@ -1,13 +1,12 @@
 const express = require("express");
 const { google } = require("google-auth-library");
 const dotenv = require("dotenv");
-const fs = require("fs");
 dotenv.config();
 
 const app = express();
 app.use(express.json());
 
-// Load service account key
+// Load service account
 const serviceAccount = require("./service-account.json");
 
 const SCOPES = ["https://www.googleapis.com/auth/firebase.messaging"];
@@ -36,33 +35,33 @@ app.post("/send-notification", async (req, res) => {
       token,
       notification: {
         title: `Incoming Call from ${fromName}`,
-        body: `Room ID: ${roomId}`
+        body: `Room ID: ${roomId}`,
       },
       data: {
-        roomId
+        roomId,
       },
       webpush: {
         notification: {
           actions: [
             { action: "accept", title: "Accept Call" },
-            { action: "reject", title: "Reject Call" }
-          ]
-        }
-      }
-    }
+            { action: "reject", title: "Reject Call" },
+          ],
+        },
+      },
+    },
   };
 
   try {
     const accessToken = await getAccessToken();
     const response = await fetch(
-      \`https://fcm.googleapis.com/v1/projects/\${PROJECT_ID}/messages:send\`,
+      `https://fcm.googleapis.com/v1/projects/${PROJECT_ID}/messages:send`,
       {
         method: "POST",
         headers: {
-          "Authorization": \`Bearer \${accessToken}\`,
-          "Content-Type": "application/json"
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(message)
+        body: JSON.stringify(message),
       }
     );
 
@@ -74,7 +73,8 @@ app.post("/send-notification", async (req, res) => {
   }
 });
 
+// ✅ Use dynamic port for Railway or fallback to 3000
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`✅ FCM HTTP v1 Server running on port ${PORT}`);
 });
